@@ -1,0 +1,9 @@
+*.gpkg
+*.shp
+*.tif
+results/
+data_gis/
+tmp/
+.DS_Store
+.Rhistory
+.Rproj.user
