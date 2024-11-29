@@ -50,7 +50,7 @@ sf_gini_disp_adm0 <- read_sf('results/vect_adm0_gini_disp_1990_2021.gpkg') %>%
   filter(!iso3 == 'ATA')
 
 
-sf_adm0 <- read_sf("/Users/mkummu/R/GIS_data_common/ne_50m_adm0_all_ids/adm0_NatEarth_all_ids.shp") %>% 
+sf_adm0 <- read_sf("data_gis/ne_50m_adm0_all_ids/adm0_NatEarth_all_ids.shp") %>% 
   # simplify the shapefile
   rmapshaper::ms_simplify(keep = 0.05, keep_shapes = T) %>%
   st_as_sf()  %>% 
@@ -183,7 +183,7 @@ tmap_save(p_gini_suppl,filename = paste0('figures/fig1_gini_suppl_1990_2021_slop
 #### 3.2 plot percentage of slope -----
 
 
-sf_gnic <- read_sf('../hdi_subnat/results/vect_gnic_1990_2021.gpkg') %>% 
+sf_gnic <- read_sf('../subnatGNI/results/vect_gnic_1990_2021.gpkg') %>% 
   mutate(slope = slope*32) %>% 
   rename(log10_1990 = '1990') %>% 
   mutate(log10_1990 = log10(log10_1990)) %>% 
@@ -360,7 +360,7 @@ ggsave(filename = 'figures/fig_gini_reg_timeseries.pdf',p_test, width = 180, hei
 
 
 # dissolve regions
-#v_adm0_reg <- vect("/Users/mkummu/R/GIS_data_common/ne_50m_adm0_all_ids/adm0_NatEarth_all_ids.shp") %>%  
+#v_adm0_reg <- vect("data_gis/ne_50m_adm0_all_ids/adm0_NatEarth_all_ids.shp") %>%  
 v_adm0_reg <- vect(sf_adm0) %>%  
   rename(iso3 = iso_a3) %>% 
   left_join(cntryID) %>% 
@@ -444,7 +444,7 @@ CVreg %>% select(RegName, CVgini)
 
 ## for GNI per capita
 
-# df_gnic_adm1 <- st_read('../hdi_subnat/results/polyg_gnic_adm0_1990_2021.gpkg') %>% 
+# df_gnic_adm1 <- st_read('../subnatGNI/results/polyg_gnic_adm0_1990_2021.gpkg') %>% 
 #   st_drop_geometry() %>% 
 #   select(iso3, GID_nmbr, X2021)  %>% 
 #   as_tibble() 
@@ -457,7 +457,7 @@ CVreg %>% select(RegName, CVgini)
 #   mutate(CVgnic = sdGnic / meanGnic)
 
 
-df_gnic_adm1 <- st_read('../hdi_subnat/results/vect_gnic_1990_2021.gpkg') %>% 
+df_gnic_adm1 <- st_read('../subnatGNI/results/vect_gnic_1990_2021.gpkg') %>% 
   st_drop_geometry() %>% 
   select(iso3, admID, X2021)  %>% 
   as_tibble() 
@@ -479,7 +479,7 @@ sf_gini_disp_adm0_cv <- sf_gini_disp_adm0 %>%
   left_join(CVadm0_gnicAdm1 %>% select(iso3, CVgnicAdm1))
 
 
-sf_adm0 <- read_sf("/Users/mkummu/R/GIS_data_common/ne_50m_adm0_all_ids/adm0_NatEarth_all_ids.shp") %>% 
+sf_adm0 <- read_sf("data_gis/ne_50m_adm0_all_ids/adm0_NatEarth_all_ids.shp") %>% 
   # simplify the shapefile
   rmapshaper::ms_simplify(keep = 0.25, keep_shapes = T) %>%
   st_as_sf()  %>% 
@@ -522,7 +522,7 @@ source('functions/f_Plot_sfAbs_bbox.R')
 source('functions/f_Plot_sfTrend_bbox.R')
 
 
-sf_adm0 <- read_sf("/Users/mkummu/R/GIS_data_common/ne_50m_adm0_all_ids/adm0_NatEarth_all_ids.shp") %>% 
+sf_adm0 <- read_sf("data_gis/ne_50m_adm0_all_ids/adm0_NatEarth_all_ids.shp") %>% 
   # simplify the shapefile
   rmapshaper::ms_simplify(keep = 0.5, keep_shapes = T) %>%
   st_as_sf()  %>% 

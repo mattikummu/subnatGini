@@ -273,10 +273,12 @@ for (iVar in 1:length(varNames)) {
 #### 9. calculate % change for gini and gnic-----
 
 slope_gini <- rast("results/rast_slope_gini_disp_1990_2021.tif")
-slope_gnic <- rast("../hdi_subnat/results/rast_slope_gnic_1990_2021.tif")
+# please change folder path to ../subnatGNI/
+slope_gnic <- rast("../subnatGini/results/rast_slope_gnic_1990_2021.tif")
 
 r_gini <- rast("results/rast_gini_disp_1990_2021.tif")
-r_gnic <- rast("../hdi_subnat/results/rast_gnic_1990_2021.tif")
+# please change folder path to ../subnatGNI/
+r_gnic <- rast("../subnatGini/results/rast_gnic_1990_2021.tif")
 
 perChange_gini <- (slope_gini / subset(r_gini,32)) * 32
 perChange_gnic <- (slope_gnic / log10(subset(r_gnic,32))) * 32

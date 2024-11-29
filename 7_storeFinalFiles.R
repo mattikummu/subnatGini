@@ -28,6 +28,8 @@ r_adm0 <- rast(paste0('results/rast_adm0_gini_disp_',yearsIn[1],'_',yearsIn[leng
 r_adm1 <- rast(paste0('results/rast_gini_disp_',yearsIn[1],'_',yearsIn[length(yearsIn)],
                              '.tif') ) 
 
+r_slope_gnic <- rast('results/rast_slope_adm1_perc_gnic.tif')
+r_slope_gini <- rast('results/rast_slope_gini_disp_1990_2021.tif')
 
 p_adm0 <- st_read(paste0('results/vect_adm0_gini_disp_',yearsIn[1],'_',yearsIn[length(yearsIn)],'.gpkg'))
 v_adm0 <- vect(paste0('results/vect_adm0_gini_disp_',yearsIn[1],'_',yearsIn[length(yearsIn)],'.gpkg'))
@@ -54,6 +56,12 @@ terra::writeRaster(round(r_adm0,3),paste0('results_final/rast_adm0_gini_disp','_
 terra::writeRaster(round(r_adm1,3),paste0('results_final/rast_adm1_gini_disp','_',yearsIn[1],'_',yearsIn[length(yearsIn)],
                                       '.tif'), gdal="COMPRESS=LZW",overwrite=TRUE)
 
+
+terra::writeRaster(round(r_slope_gnic,4),paste0('results_final/rast_slope_gni_perCapita','_',yearsIn[1],'_',yearsIn[length(yearsIn)],
+                                          '.tif'), gdal="COMPRESS=LZW",overwrite=TRUE)
+
+terra::writeRaster(round(r_slope_gini,4),paste0('results_final/rast_slope_gini_disp','_',yearsIn[1],'_',yearsIn[length(yearsIn)],
+                                          '.tif'), gdal="COMPRESS=LZW",overwrite=TRUE)
 
 #### 3. round and write polygons ----
 
