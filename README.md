@@ -2,7 +2,9 @@
 
 These codes were used to create the subnational dataset for Gini coefficient that is part of the following preprint. Please do cite this paper if using the codes. 
 
-Chrisendo, Venla, Hoffman, Masoumzadeh Sayyar, Rocha, Sandström, Solt, Kummu. 2024. Income inequality has increased for over two-thirds of the global population. Preprint. 
+Chrisendo D, Niva V, Hoffman R, Sayyar SM, Rocha J, Sandström V, Solt F, Kummu M. 2024. Income inequality has increased for over two-thirds of the global population. Preprint. 
+
+Preprint is available at: https://doi.org/10.21203/rs.3.rs-5548291/v1
 
 The input data needed to run the code is available in the repository: http://doi.org/10.5281/zenodo.14056855. Please extract the zip-file (data_in_gini.zip) under the same folder with the code. 
 
