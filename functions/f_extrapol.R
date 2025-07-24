@@ -5,8 +5,13 @@ f_extrapol <- function(dataAll, dataFull, dataToBeExtrap, iCntry) {
   #   filter(!iso3 == unique(dataFull$iso3)) %>% 
   #   set_names(c('iso3', paste0('n',1990:2021))) 
   
+  # region <- dataToBeExtrap[iCntry,] %>% 
+  #   select(iso3) %>% 
+  #   left_join(cntryID_reg %>% select(iso3, RegionID))
   
   swiidTest <- dataFull %>% 
+    # left_join(cntryID_reg %>% select(iso3, RegionID)) %>% 
+    # filter(RegionID == region$RegionID) %>% 
     pivot_longer(-iso3, names_to = 'year', values_to = 'value') %>% 
     left_join(pivot_longer(dataToBeExtrap[iCntry,], -iso3, names_to = 'year', values_to = 'value'), by = 'year') %>% 
     drop_na()
@@ -21,12 +26,35 @@ f_extrapol <- function(dataAll, dataFull, dataToBeExtrap, iCntry) {
   lm_bestModels <- lm_test %>% 
     reframe(broom::glance(mod)) %>% 
     arrange(-r.squared) %>% 
+    filter(r.squared > 0.5) %>% 
     filter(row_number() < 8) # select 7 best models
+  
+  if (nrow(lm_bestModels) == 0) {
+    lm_bestModels <- lm_test %>% 
+      reframe(broom::glance(mod)) %>% 
+      arrange(-r.squared) %>% 
+      filter(r.squared > 0.25) %>% 
+      filter(row_number() < 8)
+  } else {
+    
+  }
+  
+  
+  if (nrow(lm_bestModels) == 0) {
+    lm_bestModels <- lm_test %>% 
+      reframe(broom::glance(mod)) %>% 
+      arrange(-r.squared) %>% 
+      #filter(r.squared > 0.25) %>% 
+      filter(row_number() < 8)
+  } else {
+    
+  }
+  
   
   # calculate the disance between these best fitting countries and the target country
   
-  v_bestFits <- subset(p_adm0_centroids, p_adm0_centroids$GID_0 %in% lm_bestModels$iso3.x)
-  v_target <- subset(p_adm0_centroids, p_adm0_centroids$GID_0 %in% dataToBeExtrap[1,]$iso3)
+  v_bestFits <- subset(p_adm0_centroids, p_adm0_centroids$iso3 %in% lm_bestModels$iso3.x)
+  v_target <- subset(p_adm0_centroids, p_adm0_centroids$iso3 %in% dataToBeExtrap[1,]$iso3)
   
   distTemp <- distance(v_target, v_bestFits)
   

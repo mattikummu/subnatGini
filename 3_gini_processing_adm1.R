@@ -616,19 +616,52 @@ subnat_data_combined_ratio_iso3 <- testGIS %>%
   filter(!iso3 %in% cntry_metaData_gini_exc$iso3) %>% 
   filter(!iso3 %in% subnat_unreliableData$iso3)
   
+## read in national data
 
-sf_gsap <- read_sf('data_gis/gsap-maps/GSAP2.shp') %>% 
+adm0_data <- read_csv('results/gini_adm0_DispMkt_extrap.csv')
+
+
+sf_gsap_org <- read_sf('data_gis/gsap-maps/GSAP2.shp') %>% 
   st_drop_geometry() %>% 
   rename(iso3 = code) %>%
   mutate(iso3 = ifelse(iso3 == 'XKX', 'XKO', iso3)) %>% 
   rename(year = baseyear) %>%
-  select(iso3, sample, level, year, GSAP2_gini) %>% 
-  filter(!iso3 %in% unique(subnat_data_combined_ratio_iso3$iso3)) %>% 
+  select(iso3, geo_code2, sample, level, year, GSAP2_gini) %>% 
+  filter(!iso3 %in% unique(subnat_data_combined_ratio_iso3$iso3)) #%>% 
   #filter(!iso3 %in% unique(cntry_metaData_gini_inc$iso3)) %>% 
+  #filter(level == "national")
+
+sf_gsap_all <- read_sf('data_gis/gsap-maps/GSAP2.shp') %>% 
+  #st_drop_geometry() %>% 
+  rename(iso3 = code) %>%
+  mutate(iso3 = ifelse(iso3 == 'XKX', 'XKO', iso3)) %>% 
+  rename(year = baseyear) %>%
+  select(iso3, geo_code2, sample, level, year, GSAP2_gini) %>% 
+  #filter(level == 'subnatid1') %>% 
+  filter(!is.na(GSAP2_gini)) %>% 
+  mutate(GSAP2_gini = as.numeric(GSAP2_gini))
+
+st_write(sf_gsap_all, "data_gis/gsap-maps/GSAP2_gini.gpkg", delete_dsn = T)
+
+national_average_sf_gsap <- sf_gsap_org %>% 
+  mutate(GSAP2_gini = as.numeric(GSAP2_gini)) %>% 
+  filter(!level == -1) %>% 
+  filter(!level == "national") %>% 
+  reframe(meanAdm0 = mean(GSAP2_gini, na.rm = TRUE), .by = c(iso3, year))
+
+## fill missing values with national average
+sf_gsap <- sf_gsap_org %>% 
+  left_join(national_average_sf_gsap, by = "iso3") %>% 
+  mutate(GSAP2_gini = ifelse(is.na(GSAP2_gini), meanAdm0, GSAP2_gini)) %>% 
+  mutate(level = ifelse(!is.na(GSAP2_gini)&level == "-1", "subnatid",level  )) %>% 
+  ## filter out areas without data
+  mutate(year.x = ifelse(is.na(year.x), year.y, year.x)) %>% 
+  rename(year = year.x) %>% 
+  select(-year.y) %>% 
   filter(!level == -1) %>% 
   filter(!level == "national") %>% 
   #drop_na() %>% 
-  arrange(iso3, level)
+  arrange(iso3, level) 
 
 gsapIso3 <- unique(sf_gsap$iso3)
 
@@ -640,17 +673,20 @@ length(gsapIso3)
 ## create file
 
 
-sf_gsap_inc <- read_sf('data_gis/gsap-maps/GSAP2.shp') %>% 
-  st_drop_geometry() %>% 
-  rename(iso3 = code) %>%
+sf_gsap_inc <- sf_gsap %>% #read_sf('data_gis/gsap-maps/GSAP2.shp') %>% 
+  #st_drop_geometry() %>% 
+  # rename(iso3 = code) %>%
   rename(Subnat = sample) %>% 
-  mutate(iso3 = ifelse(iso3 == 'XKX', 'XKO', iso3)) %>% 
-  rename(year = baseyear) %>%
+  # mutate(iso3 = ifelse(iso3 == 'XKX', 'XKO', iso3)) %>% 
+  # rename(year = baseyear) %>%
   select(iso3, Subnat, geo_code2, level, year, GSAP2_gini) %>% 
   filter(iso3 %in% gsapIso3) %>% 
-  drop_na() %>% 
+  #drop_na() %>% 
   mutate(GSAP2_gini = as.numeric(GSAP2_gini)) %>% 
+  filter(!is.na(GSAP2_gini)) %>% 
   arrange(year, iso3)
+
+#UKR_-1_ADM1_3158
 
 #temp <- sf_gsap_inc %>% st_drop_geometry()
 
@@ -681,11 +717,31 @@ tempGSAP <- sf_gsap_inc_wide %>%
 
 write_csv(tempGSAP,'results/sf_gsap_inc_wide.csv')
 
+
+
+### compare GSAP with other data
+
+sf_gsap_all_noGeom <- sf_gsap_all %>% 
+  st_drop_geometry() %>% 
+  filter(!level == -1) %>% 
+  filter(!level == "national") %>% 
+  distinct(iso3, year) %>% 
+  left_join(subnat_gis_combined %>% 
+              st_drop_geometry() %>% 
+              select(iso3, '1990':'2021') %>% 
+              pivot_longer(-iso3, names_to = 'year', values_to = 'giniSubnat') %>% 
+              drop_na() %>% 
+              mutate(subnat_data = 1) %>% 
+              distinct(iso3, year, .keep_all = T)) %>% 
+  filter(subnat_data == 1)
+
+
 # sf_gsap_inc_wide %>% filter(iso3 == 'MMR')
 
 ## combine with others
 
 subnat_gis_combined_GSAP <- subnat_gis_combined %>% 
+  filter(iso3 %in% subnat_data_combined_ratio_iso3$iso3) %>% 
   filter(!iso3 %in% gsapIso3) %>% 
   bind_rows(sf_gsap_inc_wide_geom) %>% 
   arrange(iso3, GID_nmbr)

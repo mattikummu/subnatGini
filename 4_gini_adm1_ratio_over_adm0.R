@@ -221,6 +221,7 @@ subnat_data_combined_ratio_interp <- subnat_data_combined_ratio %>%
   as_tibble() %>% 
   select(-c(s1989, Country, Subnat, GID_1)) %>% 
   set_names('iso3', 'cntry_code', 'GID_nmbr', paste0(1990:2021)) %>% 
+  mutate('2022' = NA) %>% mutate('2023' = NA) %>% 
   pivot_longer(-c('iso3', 'cntry_code', 'GID_nmbr'), names_to = 'year', values_to = 'ratio_gini') %>% 
   group_by(GID_nmbr) %>% 
   mutate(ratio_gini = na.approx(ratio_gini, rule = 2)) %>% 

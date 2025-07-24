@@ -29,7 +29,7 @@ f_gini_data2raster <- function(inYears = 1990:2021, IndexName, inDataAdm0, inDat
     drop_na()
   
   
-  idNoData <- adm0adm1_polyg %>% 
+  idNoData <- sf_adm0adm1_polyg_topo %>% 
     st_drop_geometry() %>% 
     select(admID) %>% 
     filter(!admID %in% unique(tempDataAdm0Adm1$admID)) %>% 

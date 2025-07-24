@@ -26,8 +26,8 @@ f_estimateMissingGini <- function(iso3_inBoth, iso3_missing, giniVar, scalingDat
   WID_temp <- scalingData %>% 
     filter(iso3 == iso3_temp) %>% 
     select(-Country, - iso3) %>% 
-    pivot_longer(everything())%>% 
-    rename(year = name) %>% rename(giniWID = value)
+    #pivot_longer(everything())%>% 
+    rename(giniWID = gini)
   
   comb_temp <- WID_temp %>% 
     left_join(SWIID_temp) %>% 
@@ -38,8 +38,7 @@ f_estimateMissingGini <- function(iso3_inBoth, iso3_missing, giniVar, scalingDat
   WID_pred <- scalingData %>% 
     filter(iso3 == iso3_pred) %>% 
     select(-Country, - iso3) %>% 
-    pivot_longer(everything())%>% 
-    rename(year = name) %>% rename(giniWID = value) %>% 
+    rename(giniWID = gini) %>% 
     filter(year %in% comb_temp$year)  %>% 
     drop_na()
   

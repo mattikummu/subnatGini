@@ -1,5 +1,5 @@
 
-f_Plot_sf_abs<-function(sf_in,column_in,breaks_in, 
+f_Plot_sf_abs_trendAgr<-function(sf_in,column_in,breaks_in, 
                         colPal = scico(9, begin = 0.1, end = 0.9,direction = 1, palette = "nuuk")){
   
   pal <-  colPal
@@ -8,8 +8,8 @@ f_Plot_sf_abs<-function(sf_in,column_in,breaks_in,
     tm_fill(col = column_in,
             palette = pal,
             #contrast = c(0, 0.7),
+            colorNA = NULL,
             breaks = breaks_in,
-            colorNA = 'white',
             lwd=0.0,
             border.col = "transparent",
             legend.is.portrait = FALSE)+

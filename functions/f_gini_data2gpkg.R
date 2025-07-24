@@ -5,7 +5,7 @@ f_gini_data2gpkg <- function(inYears = 1990:2021, IndexName, inDataAdm0, inDataA
   
   tempDataAdm0 <- inDataAdm0 %>% 
     select(iso3, year, !!IndexName) %>% 
-    left_join(cntryID[,c(1,3)]) %>% 
+    left_join(cntryID[,c(1,3)]  %>% distinct(cntry_code, iso3, .keep_all = T)) %>% 
     mutate(admID = cntry_code) %>% 
     dplyr::select(c(!!IndexName,year, cntry_code, admID, iso3))
   
@@ -34,7 +34,7 @@ f_gini_data2gpkg <- function(inYears = 1990:2021, IndexName, inDataAdm0, inDataA
     select(-year) %>% 
     nest(data = -admID) %>% 
     mutate(
-      model = map(data,  ~ mblm(!!as.name(IndexName) ~ time, data = .))
+      model = map(data,  ~ mblm::mblm(!!as.name(IndexName) ~ time, data = .))
     ) %>% 
     mutate(
       tidy_summary = map(model, tidy)
@@ -56,19 +56,20 @@ f_gini_data2gpkg <- function(inYears = 1990:2021, IndexName, inDataAdm0, inDataA
   #              glance(model))})   %>% 
   #   filter(term == 'year')
   
-  adm0adm1_polyg_noGeom <- adm0adm1_polyg %>%
+  adm0adm1_polyg_noGeom <- adm0adm1_polyg_simp %>%
     st_drop_geometry() %>% 
     select(iso3, admID)
   
   tempDataAdm0Adm1_wTrend <- tempDataAdm0Adm1 %>% 
     pivot_wider(names_from = 'year', values_from = as.name(!!IndexName)) %>% 
     left_join(tempDataAdm0Adm1_trend) %>% 
-    mutate(p.value = p.value < 0.05) %>% 
+    mutate(p.value = p.value < 0.1) %>% 
     mutate(slope = p.value * estimate) %>% 
     right_join(adm0adm1_polyg_simp) %>% 
     left_join(adm0adm1_polyg_noGeom) %>% 
     select(admID, iso3, slope, everything()) 
   
+  #ttemp <- tempDataAdm0Adm1_wTrend %>% st_drop_geometry() %>% select(-geom)
   
   # tempDataAdm0Adm1 %>%
   #   dplyr::group_by(admID, year) %>%
@@ -81,7 +82,7 @@ f_gini_data2gpkg <- function(inYears = 1990:2021, IndexName, inDataAdm0, inDataA
   # slope to raster
   
   
-  idNoData <- adm0adm1_polyg %>% 
+  idNoData <- adm0adm1_polyg_simp %>% 
     st_drop_geometry() %>% 
     select(admID) %>% 
     filter(!admID %in% unique(tempDataAdm0Adm1$admID)) %>% 
@@ -89,8 +90,8 @@ f_gini_data2gpkg <- function(inYears = 1990:2021, IndexName, inDataAdm0, inDataA
   
   adm0adm1_raster_5arcmin[adm0adm1_raster_5arcmin %in% as.numeric(as.matrix(idNoData))] <- NA
   
-  temp_id <-  as.numeric(tempDataAdm0Adm1_trend$admID)
-  temp_v <- as.numeric(tempDataAdm0Adm1_trend$estimate)
+  temp_id <-  as.numeric(tempDataAdm0Adm1_wTrend$admID)
+  temp_v <- as.numeric(tempDataAdm0Adm1_wTrend$slope)
   
   # reclassify
   slope_raster <- classify(adm0adm1_raster_5arcmin,

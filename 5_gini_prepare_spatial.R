@@ -12,6 +12,9 @@ library(openxlsx) #
 library(readxl)
 library(mblm)
 
+library(qgisprocess)
+library(tidyterra)
+
 library(tidyverse)
 library(dplyr) 
 
@@ -20,6 +23,8 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
 
 #### 1. load  data ----
+
+timesteps <- seq(1990,2023)
 
 cntryID <- read_csv("data_in/countries_codes_and_coordinates.csv") %>% 
   dplyr::select(-cntry_code) %>% 
@@ -50,7 +55,22 @@ v_adm0_gis <- vect('results/swiidDataFilled_gis.gpkg')
 
 # adm0 and adm1 data
 
-adm0_comb_interpExtrap <- read_csv('results/gini_adm0_DispMkt_extrap.csv')
+adm0_comb_interpExtrap_SWIID <- read_csv('results/gini_adm0_DispMkt_extrap.csv')
+adm0_comb_interpExtrap_WID <- read_csv('results/gini_adm0_WID_extrap_filled.csv')
+
+adm0_comb_interpExtrap <- adm0_comb_interpExtrap_SWIID %>% 
+  left_join(adm0_comb_interpExtrap_WID)
+
+# test that data for both exist
+
+temp <- adm0_comb_interpExtrap %>% 
+  filter(is.na(gini_WID))
+
+# # for missing countries in WID, let's use SWIID
+# 
+# adm0_comb_interpExtrap <- adm0_comb_interpExtrap_comb %>% 
+#   mutate(gini_WID = ifelse(is.na(gini_WID), gini_disp, gini_WID))
+
 adm1_ratioAdm1Adm0_interp <- read_csv('results/subnat_data_combined_ratio_interp.csv')
 
 
@@ -66,9 +86,10 @@ adm1Missing <- adm1_ratioAdm1Adm0_interp %>%
 #### 2. create / load polygon data -----
 
 
-if (file.exists('data_gis/gini_comb_Adm0Adm1.gpkg')){
+if (file.exists('data_gis/gini_comb_Adm0Adm1_simpl.gpkg')){
   # load it
-  adm0adm1_polyg <- read_sf('data_gis/gini_comb_Adm0Adm1.gpkg') 
+  sf_adm0adm1_polyg_topo <- read_sf('data_gis/gini_comb_Adm0Adm1_simpl.gpkg') 
+  sf_adm0_polyg_topo <- read_sf('data_gis/gini_Adm0_simpl.gpkg') 
 } else { 
   # create it
   
@@ -109,8 +130,10 @@ if (file.exists('data_gis/gini_comb_Adm0Adm1.gpkg')){
   adm1_polyg_comb <- adm1_gis_combined %>% 
     filter(GID_nmbr %in% unique(adm1_ratioAdm1Adm0_interp$GID_nmbr)) %>%  # choose only those regions we have data for
     select(iso3, cntry_code, GID_nmbr, geom)
-    
+  
   adm0adm1_polyg <- bind_rows(adm1_polyg_comb,adm0_polyg_sel)
+  
+  #test <- adm0adm1_polyg %>% st_drop_geometry()
   
   GDLids_cntry <- unique(adm1_ratioAdm1Adm0_interp$iso3) %>% 
     as_tibble() %>% 
@@ -125,12 +148,93 @@ if (file.exists('data_gis/gini_comb_Adm0Adm1.gpkg')){
     #left_join(cntry_info[,c(2,4)]) %>% 
     mutate(admID = ifelse(is.na(GID_nmbr), cntry_code, GID_nmbr) ) %>% 
     select(-GID_nmbr)
-             
-           
-  test_adm0adm1_polyg <-adm0adm1_polyg  %>% 
-    st_drop_geometry()
   
   write_sf(adm0adm1_polyg,'data_gis/gini_comb_Adm0Adm1.gpkg')
+  ## simplify polygon
+  
+  
+  
+  # adm0adm1_polyg <- st_make_valid(adm0adm1_polyg)
+  adm0adm1_polyg_antimer <- adm0adm1_polyg %>% 
+    st_break_antimeridian(lon_0 = 0) 
+  
+  
+  
+  qgis_configure()
+  
+  result <- qgis_run_algorithm(
+    "native:fixgeometries",
+    INPUT = adm0adm1_polyg_antimer,
+    OUTPUT = qgis_tmp_vector()  # creates a temporary output
+  )
+  
+  # Read the result back into R
+  fixed_sf <- st_read(result$OUTPUT) #%>% 
+  #st_make_valid()
+  
+  #write_sf(fixed_sf,'data_gis/gini_comb_Adm0Adm1_fixed.gpkg')
+  
+  
+  geojson_file <- "data_out/v_adm0adm1_polyg.geojson"
+  sf::st_write(fixed_sf, geojson_file, driver = "GeoJSON", delete_dsn = TRUE)
+  
+  topoj_file <- "data_out/v_adm0adm1_polyg.topojson"
+  topoj_file_simp <- "data_out/v_adm0adm1_polyg_simpl.topojson"
+  
+  
+  command <- paste0(
+    "node --max-old-space-size=8192 ",
+    "\"", Sys.which("mapshaper"), "\" ",
+    geojson_file,
+    " -o format=topojson ",
+    topoj_file
+  )
+  
+  # Print the command to see what's being executed (useful for debugging)
+  print(command)
+  system(command)
+  
+  # Optional: You can add -wrap to the simplification step too,
+  # but usually, fixing it during the initial GeoJSON to TopoJSON conversion is enough.
+  command_simpl <- paste0(
+    "node --max-old-space-size=8192 ", 
+    "$(which mapshaper) ", 
+    topoj_file, 
+    " -clean -simplify 5% keep-shapes -o ", 
+    topoj_file_simp
+  )
+  
+  print(command_simpl)
+  system(command_simpl)
+  
+  sf_adm0adm1_polyg_topo <- geojsonio::topojson_read(topoj_file_simp)
+  
+  
+  #plot(sf_adm0adm1_polyg_topo)
+  # 
+  # size_mb <- object.size(sf_adm0adm1_polyg_topo) / (1024^2)
+  # print(paste("Size in MB:", round(size_mb, 2)))
+  
+  #sf_adm0adm1_polyg_topo <- sf::st_make_valid(sf_adm0adm1_polyg_topo) 
+  #sf::st_is_valid(sf_adm0adm1_polyg_topo)
+  
+  sf_adm0adm1_polyg_topo <- st_set_crs(sf_adm0adm1_polyg_topo, st_crs(adm0adm1_polyg)) %>% 
+    st_make_valid()
+  # 
+  
+  v_adm0adm1_polyg_topo <- vect(sf_adm0adm1_polyg_topo) %>% 
+    makeValid()
+  
+  writeVector(v_adm0adm1_polyg_topo,'data_gis/gini_comb_Adm0Adm1_simpl.gpkg', overwrite=TRUE)
+  #write_sf(adm0adm1_polyg,'data_gis/gini_comb_Adm0Adm1.gpkg')
+  
+  v_adm0_polyg_topo <- terra::aggregate(v_adm0adm1_polyg_topo, by = 'cntry_code') %>% 
+    select(iso3, cntry_code)
+  
+  writeVector(v_adm0_polyg_topo,'data_gis/gini_Adm0_simpl.gpkg', overwrite=TRUE)
+  
+  sf_adm0adm1_polyg_topo <- read_sf('data_gis/gini_comb_Adm0Adm1_simpl.gpkg') 
+  sf_adm0_polyg_topo <- read_sf('data_gis/gini_Adm0_simpl.gpkg') 
 }
 
 
@@ -143,13 +247,16 @@ if (file.exists('data_gis/gini_comb_Adm0Adm1_5arcmin.tif')){
 } else { 
   # create it
   
+  
+  
   #create ref raster
   ref_raster_5arcmin <- raster::raster(ncol=360*12, nrow=180*12)
   ref_raster_1arcmin <- raster::raster(ncol=360*60, nrow=180*60)
   # rasterise to 1 arc min resolutions
   
-  adm0adm1_raster_1arcmin <-  rast(fasterize::fasterize(adm0adm1_polyg,ref_raster_1arcmin,field="admID"))
-  adm0_raster_1arcmin <- rast(fasterize::fasterize(adm0_gis,ref_raster_1arcmin,field="cntry_code"))
+  
+  adm0adm1_raster_1arcmin <-  rast(fasterize::fasterize(sf_adm0adm1_polyg_topo,ref_raster_1arcmin,field="admID"))
+  adm0_raster_1arcmin <- rast(fasterize::fasterize(sf_adm0_polyg_topo,ref_raster_1arcmin,field="cntry_code"))
   
   # aggregate to 5 arc-min
   adm0adm1_raster_5arcmin <- terra::aggregate(adm0adm1_raster_1arcmin,fact=5,fun=modal,na.rm=T)
@@ -163,7 +270,22 @@ if (file.exists('data_gis/gini_comb_Adm0Adm1_5arcmin.tif')){
 
 
 
-### 4. put data to raster -----------------------------------------------------
+### 4. adm0 data to raster ----
+
+
+source('functions/f_gini_adm0_data2raster.R')
+
+varNames <- c('gini_disp', 'gini_WID')
+
+for (iVar in 1:length(varNames)) {
+  
+  rast_varName <- f_gini_adm0_data2raster(inYears = timesteps, 
+                                          IndexName = varNames[iVar], 
+                                          inDataAdm0 = adm0_comb_interpExtrap) 
+  
+}
+
+### 5. put data to raster -----------------------------------------------------
 # 
 # inYears = 1990:2021
 # IndexName = 'gini_mkt'
@@ -172,62 +294,52 @@ if (file.exists('data_gis/gini_comb_Adm0Adm1_5arcmin.tif')){
 
 source('functions/f_gini_data2raster.R')
 
-varNames <- 'gini_disp' #c('gini_mkt', 'gini_disp')
+varNames <- c('gini_disp', 'gini_WID')  #c('gini_mkt', 'gini_disp')
 
 for (iVar in 1:length(varNames)) {
   
-  rast_varName <- f_gini_data2raster(inYears = 1990:2021, 
-                                       IndexName = varNames[iVar], 
-                                       inDataAdm0 = adm0_comb_interpExtrap, 
-                                       inDataAdm1 = adm1_ratioAdm1Adm0_interp) 
+  rast_varName <- f_gini_data2raster(inYears = timesteps, 
+                                     IndexName = varNames[iVar], 
+                                     inDataAdm0 = adm0_comb_interpExtrap, 
+                                     inDataAdm1 = adm1_ratioAdm1Adm0_interp) 
   
 }
 
-
-
-### 5. adm0 data to raster ----
-
-
-source('functions/f_gini_adm0_data2raster.R')
-
-varNames <- c('gini_mkt', 'gini_disp')
-
-for (iVar in 1:length(varNames)) {
-  
-  rast_varName <- f_gini_adm0_data2raster(inYears = 1990:2021, 
-                                         IndexName = varNames[iVar], 
-                                         inDataAdm0 = adm0_comb_interpExtrap) 
-  
-}
-
-
-
+# 
+# ### there are some areas where no adm1 data (Krimi, areas between China and India, ec). 
+# ## let's use adm0 data for those
+# 
+# r_gini_adm0 <- rast('results/rast_adm0_gini_disp_1990_2021.tif')
+# r_gini_adm1 <- rast('results/rast_gini_disp_1990_2021.tif')
+# 
+# r_gini_adm1[is.na(r_gini_adm1)] = r_gini_adm0
+# 
+# terra::writeRaster(r_gini_adm1,paste0('results/rast_gini_disp_1990_2021.tif'), gdal="COMPRESS=LZW",overwrite=TRUE)
 
 
 ### 6. simplify polygon layer ----
 
-if (file.exists('data_gis/gini_comb_Adm0Adm1_siml.gpkg')){
-  # load it
-  adm0adm1_polyg_simp <- st_read('data_gis/gini_comb_Adm0Adm1_siml.gpkg') %>% 
-    rename(admID = layer)
-  adm0_polyg_simp <- st_read('data_gis/adm0_polyg_simp.gpkg') %>% 
-    rename(admID = layer)
-} else { 
-  # create it
-  
-  adm0adm1_polyg_simp <- as.polygons(adm0adm1_raster_5arcmin) 
-  writeVector(adm0adm1_polyg_simp, 'data_gis/gini_comb_Adm0Adm1_siml.gpkg', overwrite=T)
-  
-  adm0_polyg_simp <- as.polygons(adm0_raster_5arcmin) 
-  writeVector(adm0_polyg_simp, 'data_gis/adm0_polyg_simp.gpkg', overwrite=T)
-  
-  adm0adm1_polyg_simp <- st_read('data_gis/gini_comb_Adm0Adm1_siml.gpkg') %>% 
-    rename(admID = layer)
-  adm0_polyg_simp <- st_read('data_gis/adm0_polyg_simp.gpkg') %>% 
-    rename(admID = layer)
-  
-  
-}
+# if (file.exists('data_gis/gini_comb_Adm0Adm1_simpl.gpkg')){
+# load it
+adm0adm1_polyg_simp <- st_read('data_gis/gini_comb_Adm0Adm1_simpl.gpkg') 
+adm0_polyg_simp <- st_read('data_gis/gini_Adm0_simpl.gpkg') %>% 
+  mutate(admID = cntry_code)
+# } else { 
+#   # create it
+#   
+#   # adm0adm1_polyg_simp <- as.polygons(adm0adm1_raster_5arcmin) 
+#   # writeVector(adm0adm1_polyg_simp, 'data_gis/gini_comb_Adm0Adm1_siml.gpkg', overwrite=T)
+#   # 
+#   adm0_polyg_simp <- as.polygons(adm0_raster_5arcmin) 
+#   writeVector(adm0_polyg_simp, 'data_gis/adm0_polyg_simp.gpkg', overwrite=T)
+#   
+#   # adm0adm1_polyg_simp <- st_read('data_gis/gini_comb_Adm0Adm1_siml.gpkg') %>% 
+#   #   rename(admID = layer)
+#   adm0_polyg_simp <- st_read('data_gis/adm0_polyg_simp.gpkg') %>% 
+#     rename(admID = layer)
+#   
+#   
+# }
 
 
 
@@ -240,16 +352,18 @@ if (file.exists('data_gis/gini_comb_Adm0Adm1_siml.gpkg')){
 
 source('functions/f_gini_data2gpkg.R')
 
-varNames <- 'gini_disp'#c('gini_mkt', 'gini_disp')
+varNames <- c('gini_disp', 'gini_WID') #c('gini_mkt', 'gini_disp')
 
 for (iVar in 1:length(varNames)) {
   
-  vect_varName <- f_gini_data2gpkg(inYears = 1990:2021, 
-                                        IndexName = varNames[iVar], 
-                                        inDataAdm0 = adm0_comb_interpExtrap, 
-                                        inDataAdm1 = adm1_ratioAdm1Adm0_interp) 
+  vect_varName <- f_gini_data2gpkg(inYears = timesteps, 
+                                   IndexName = varNames[iVar], 
+                                   inDataAdm0 = adm0_comb_interpExtrap, 
+                                   inDataAdm1 = adm1_ratioAdm1Adm0_interp) 
   
 }
+
+
 
 
 
@@ -258,13 +372,13 @@ for (iVar in 1:length(varNames)) {
 source('functions/f_gini_adm0data2gpkg.R')
 
 
-varNames <- c('gini_mkt', 'gini_disp')
+varNames <- c('gini_disp', 'gini_WID')
 
 for (iVar in 1:length(varNames)) {
   
-  vect_varName <- f_gini_adm0data2gpkg(inYears = 1990:2021, 
-                                           IndexName = 'gini_disp', 
-                                           inDataAdm0 = adm0_comb_interpExtrap) 
+  vect_varName <- f_gini_adm0data2gpkg(inYears = timesteps, 
+                                       IndexName = varNames[iVar], 
+                                       inDataAdm0 = adm0_comb_interpExtrap) 
   
 }
 
@@ -272,16 +386,16 @@ for (iVar in 1:length(varNames)) {
 
 #### 9. calculate % change for gini and gnic-----
 
-slope_gini <- rast("results/rast_slope_gini_disp_1990_2021.tif")
+slope_gini <- rast("results/rast_slope_gini_disp_1990_2023.tif")
 # please change folder path to ../subnatGNI/
-slope_gnic <- rast("../subnatGini/results/rast_slope_gnic_1990_2021.tif")
+slope_gnic <- rast("../subnatGNI/results/rast_slope_log10gnic_1990_2023.tif")
 
-r_gini <- rast("results/rast_gini_disp_1990_2021.tif")
+r_gini <- rast("results/rast_gini_disp_1990_2023.tif")
 # please change folder path to ../subnatGNI/
-r_gnic <- rast("../subnatGini/results/rast_gnic_1990_2021.tif")
+r_gnic <- rast("../subnatGNI/results/rast_gnic_1990_2023.tif")
 
-perChange_gini <- (slope_gini / subset(r_gini,32)) * 32
-perChange_gnic <- (slope_gnic / log10(subset(r_gnic,32))) * 32
+perChange_gini <- (slope_gini / subset(r_gini,34)) * 34
+perChange_gnic <- (slope_gnic / log10(subset(r_gnic,34))) * 34
 
 plot(perChange_gini)
 plot(perChange_gnic)

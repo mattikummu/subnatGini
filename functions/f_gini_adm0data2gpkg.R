@@ -44,7 +44,7 @@ f_gini_adm0data2gpkg <- function(inYears = 1990:2021,
   #              glance(model))})   %>% 
   #   filter(term == 'year')
   
-  adm0_polyg_noGeom <- adm0_gis %>%
+  adm0_polyg_noGeom <- sf_adm0_polyg_topo %>%
     st_drop_geometry() %>% 
     rename(admID = cntry_code) %>% 
     select(iso3, admID)
@@ -52,7 +52,7 @@ f_gini_adm0data2gpkg <- function(inYears = 1990:2021,
   tempDataAdm0_wTrend <- tempDataAdm0 %>% 
     pivot_wider(names_from = 'year', values_from = as.name(!!IndexName)) %>% 
     left_join(tempDataAdm0_trend) %>% 
-    mutate(p.value = p.value < 0.05) %>% 
+    mutate(p.value = p.value < 0.1) %>% 
     mutate(slope = p.value * estimate) %>% 
     right_join(adm0_polyg_simp) %>% 
     left_join(adm0_polyg_noGeom) %>% 
@@ -79,8 +79,8 @@ f_gini_adm0data2gpkg <- function(inYears = 1990:2021,
   
   adm0_raster_5arcmin[adm0_raster_5arcmin %in% as.numeric(as.matrix(idNoData))] <- NA
   
-  temp_id <-  as.numeric(tempDataAdm0_trend$admID)
-  temp_v <- as.numeric(tempDataAdm0_trend$estimate)
+  temp_id <-  as.numeric(tempDataAdm0_wTrend$admID)
+  temp_v <- as.numeric(tempDataAdm0_wTrend$slope)
   
   # reclassify
   slope_raster <- classify(adm0_raster_5arcmin,

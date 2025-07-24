@@ -8,6 +8,7 @@ f_Plot_sfTrend_bbox<-function(sf_in,column_in,breaks_in, boundBox, colPal){
             palette = colPal,
             breaks = breaks_in,
             midpoint = 0,
+            colorNA = 'white',
             contrast = c(0, 0.7),
             lwd=0,
             legend.is.portrait = FALSE)+

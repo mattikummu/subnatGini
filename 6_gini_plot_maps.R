@@ -15,7 +15,7 @@ library(ggplot2)
 library(rcartocolor)
 
 
-library(exactextractr)
+library(exactextractr) 
 
 # set working directory the path that this script is located in
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -31,23 +31,35 @@ cntryID <- read_csv("data_in/countries_codes_and_coordinates.csv") %>%
   mutate(iso2 = ifelse(Country == 'Namibia','NB',iso2)) %>% 
   distinct(iso3, .keep_all = T)
 
-sf_gini_disp <- read_sf('results/vect_gini_disp_1990_2021.gpkg') %>% 
-  mutate(slopeGiniDisp = 32*slope) %>% 
-  rename(giniDisp2021 = '2021') %>% 
+sf_gini_disp <- read_sf('results/vect_gini_disp_1990_2023.gpkg') %>% 
+  mutate(slope = ifelse(slope == 0, NA, slope)) %>% 
+  mutate(slopeGiniDisp = 34*slope) %>% 
+  rename(giniDisp2023 = '2023') %>% 
   rename(giniDisp1990 = '1990') %>% 
   filter(!iso3 == 'ATA')
 
-sf_gini_mkt <- read_sf('results/vect_gini_mkt_1990_2021.gpkg')%>% 
-  mutate(slopeGiniMkt = 32*slope) %>% 
-  rename(giniMkt2021 = '2021')  %>% 
+sf_gini_WID <- read_sf('results/vect_gini_WID_1990_2023.gpkg')%>% 
+  mutate(slope = ifelse(slope == 0, NA, slope)) %>% 
+  mutate(slopeginiWID = 34*slope) %>% 
+  rename(giniWID2023 = '2023') %>% 
+  rename(giniWID1990 = '1990') %>% 
   filter(!iso3 == 'ATA')
 
 
-sf_gini_disp_adm0 <- read_sf('results/vect_adm0_gini_disp_1990_2021.gpkg') %>% 
-  mutate(slopeGiniDisp = 32*slope) %>% 
-  rename(giniDisp2021 = '2021')  %>% 
+sf_gini_disp_adm0 <- read_sf('results/vect_adm0_gini_disp_1990_2023.gpkg') %>% 
+  mutate(slope = ifelse(slope == 0, NA, slope)) %>% 
+  mutate(slopeGiniDisp = 34*slope) %>% 
+  rename(giniDisp2023 = '2023')  %>% 
   rename(giniDisp1990 = '1990') %>% 
   filter(!iso3 == 'ATA')
+
+sf_gini_WID_adm0 <- read_sf('results/vect_adm0_gini_WID_1990_2023.gpkg')%>% 
+  mutate(slope = ifelse(slope == 0, NA, slope)) %>% 
+  mutate(slopeGiniWID = 34*slope) %>% 
+  rename(giniWID2023 = '2023') %>% 
+  rename(giniWID1990 = '1990') %>% 
+  filter(!iso3 == 'ATA')
+
 
 
 sf_adm0 <- read_sf("data_gis/ne_50m_adm0_all_ids/adm0_NatEarth_all_ids.shp") %>% 
@@ -66,48 +78,96 @@ source('functions/f_Plot_sf_trend.R')
 
 #### 3. plot maps ----
 
-minGini <- quantile( sf_gini_disp$giniDisp2021, .05, na.rm=T)
-maxGini <- quantile( sf_gini_disp$giniDisp2021, .95, na.rm=T) 
+minGini <- quantile( sf_gini_disp$giniDisp2023 , .05, na.rm=T)
+maxGini <- quantile( sf_gini_disp$giniDisp2023, .95, na.rm=T) 
 
 giniRange <- seq( plyr::round_any( minGini,accuracy=0.05,f=floor ), 
                   plyr::round_any( maxGini,accuracy=0.05,f=ceiling ) ,
                   by= 0.01) 
 
 
-minSlope <- quantile(sf_gini_disp$slopeGiniDisp, .05, na.rm = T)
-maxSlope <- quantile(sf_gini_disp$slopeGiniDisp, .95, na.rm = T)
+minGiniWID <- quantile( sf_gini_WID$giniWID2023 , .05, na.rm=T)
+maxGiniWID <- quantile( sf_gini_WID$giniWID2023, .95, na.rm=T) 
 
-slopeRange <- seq( plyr::round_any( minSlope,accuracy=0.01,f=floor ), 
-                   plyr::round_any( maxSlope,accuracy=0.01,f=ceiling ) ,
-                   by= 0.01) 
+giniRangeWID <- seq( plyr::round_any( minGiniWID,accuracy=0.05,f=floor ), 
+                  plyr::round_any( maxGiniWID,accuracy=0.05,f=ceiling ) ,
+                  by= 0.01) 
+
+# 
+# minSlope <- quantile(sf_gini_disp$slopeGiniDisp, .05, na.rm = T)
+# maxSlope <- quantile(sf_gini_disp$slopeGiniDisp, .95, na.rm = T)
+# 
+# slopeRange <- seq( plyr::round_any( minSlope,accuracy=0.01,f=floor ), 
+#                    plyr::round_any( maxSlope,accuracy=0.01,f=ceiling ) ,
+#                    by= 0.01) 
+
+slopeRange <- seq(-0.12, 0.12, .01)
 
 scico_palette_names()
 
+
+
 giniPal <- scico(9, begin = 0.1, end = 0.9,direction = -1, palette = "glasgow")
 
-p_giniDisp <- f_Plot_sf_abs(sf_gini_disp,'giniDisp2021',giniRange, colPal = giniPal )
-p_giniMkt <- f_Plot_sf_abs(sf_gini_mkt,'giniMkt2021',giniRange, colPal = giniPal )
+p_giniDisp2023 <- f_Plot_sf_abs(sf_gini_disp,'giniDisp2023',giniRange, colPal = giniPal )
+p_giniWID2023 <- f_Plot_sf_abs(sf_gini_WID,'giniWID2023',giniRangeWID, colPal = giniPal )
+
+
+p_giniDisp1990 <- f_Plot_sf_abs(sf_gini_disp,'giniDisp1990',giniRange, colPal = giniPal )
+p_giniWID1990 <- f_Plot_sf_abs(sf_gini_WID,'giniWID1990',giniRangeWID, colPal = giniPal )
 
 slopePal <- scico(9, begin = 0.1, end = 0.9,direction = 1, palette = "vik")
 
 p_giniDispSlope <- f_Plot_sf_trend(sf_gini_disp,'slopeGiniDisp',slopeRange, pal = slopePal)
-p_giniMktSlope <- f_Plot_sf_trend(sf_gini_mkt,'slopeGiniMkt',slopeRange, pal = slopePal)
+p_giniWIDSlope <- f_Plot_sf_trend(sf_gini_WID,'slopeginiWID',slopeRange, pal = slopePal)
 
 
-p_gini <- tmap_arrange(p_giniMkt, p_giniMktSlope,
-                       p_giniDisp, p_giniDispSlope,
-                       
-                       ncol = 2)
 
-tmap_save(p_gini,filename = paste0('figures/fig1_gini2021_slope_',Sys.Date(),'.pdf'),width = 180, height=120, units='mm')
 
+if (dir.exists('figures/figSWIID_WID/')) {
+  
+} else {
+  dir.create('figures/figSWIID_WID/')  
+}
+
+layers <- list(p_giniDisp2023, p_giniWID2023, 
+               p_giniDisp1990, p_giniWID1990,
+               p_giniDispSlope, p_giniWIDSlope)
+
+nameLayers <- c('p_giniDisp2023', 'p_giniWID2023', 
+                'p_giniDisp1990', 'p_giniWID1990',
+                'p_giniDispSlope', 'p_giniWIDSlope')
+
+for (i in 1:length(layers)) {
+  
+  p_fig_legend <- layers[[i]]
+  
+  p_fig <- layers[[i]] + 
+    tm_layout(legend.show=FALSE)
+  
+  tmap_save(p_fig,filename = paste0('figures/figSWIID_WID/fig_',nameLayers[i],'.png'),width = 80, height = 35.51, units='mm', dpi = 600)
+  tmap_save(p_fig_legend,filename = paste0('figures/figSWIID_WID/fig_legend_',nameLayers[i],'.png'),width = 80, height = 35.51, units='mm', dpi = 600)
+}
+
+
+
+# 
+# 
+# 
+# p_gini <- tmap_arrange(p_giniWID, p_giniWIDSlope,
+#                        p_giniDisp, p_giniDispSlope,
+#                        
+#                        ncol = 2)
+# 
+# tmap_save(p_gini,filename = paste0('figures/fig1_gini2023_slope.pdf'),width = 180, height=120, units='mm')
+# 
 
 ##### 3.1 adm 1 and adm 0 level maps ----
 
 
 
-minGini <- quantile( sf_gini_disp$giniDisp2021, .05, na.rm=T)
-maxGini <- quantile( sf_gini_disp$giniDisp2021, .95, na.rm=T) 
+minGini <- quantile( sf_gini_disp$giniDisp2023, .05, na.rm=T)
+maxGini <- quantile( sf_gini_disp$giniDisp2023, .95, na.rm=T) 
 
 giniRange <- seq( plyr::round_any( minGini,accuracy=0.05,f=floor ), 
                   plyr::round_any( maxGini,accuracy=0.05,f=ceiling ) ,
@@ -122,15 +182,15 @@ giniRange <- seq( plyr::round_any( minGini,accuracy=0.05,f=floor ),
 #                    by= 0.01) 
 
 
-slopeRange <- seq(-0.10, 0.10, .0125)
+slopeRange <- seq(-0.12, 0.12, .01)
 
 
 scico_palette_names()
 
 giniPal <- scico(9, begin = 0.1, end = 0.9,direction = -1, palette = "glasgow")
 
-p_giniDisp_adm1_2021 <- f_Plot_sf_abs(sf_gini_disp,'giniDisp2021',giniRange, colPal = giniPal )
-p_giniDisp_adm0_2021 <- f_Plot_sf_abs(sf_gini_disp_adm0,'giniDisp2021',giniRange, colPal = giniPal )
+p_giniDisp_adm1_2023 <- f_Plot_sf_abs(sf_gini_disp,'giniDisp2023',giniRange, colPal = giniPal )
+p_giniDisp_adm0_2023 <- f_Plot_sf_abs(sf_gini_disp_adm0,'giniDisp2023',giniRange, colPal = giniPal )
 
 p_giniDisp_adm1_1990 <- f_Plot_sf_abs(sf_gini_disp,'giniDisp1990',giniRange, colPal = giniPal )
 p_giniDisp_adm0_1990 <- f_Plot_sf_abs(sf_gini_disp_adm0,'giniDisp1990',giniRange, colPal = giniPal )
@@ -141,7 +201,7 @@ p_giniDispSlope_adm1 <- f_Plot_sf_trend(sf_gini_disp,'slopeGiniDisp',slopeRange,
 p_giniDispSlope_adm0 <- f_Plot_sf_trend(sf_gini_disp_adm0,'slopeGiniDisp',slopeRange, slopePal)
 
 
-
+temp <- sf_gini_disp_adm0 %>% st_drop_geometry()
 
 if (dir.exists('figures/figSuppl/')) {
   
@@ -149,7 +209,7 @@ if (dir.exists('figures/figSuppl/')) {
   dir.create('figures/figSuppl/')  
 }
 
-layers <- list(p_giniDisp_adm1_2021, p_giniDisp_adm0_2021, 
+layers <- list(p_giniDisp_adm1_2023, p_giniDisp_adm0_2023, 
                p_giniDisp_adm1_1990, p_giniDisp_adm0_1990,
                p_giniDispSlope_adm1, p_giniDispSlope_adm0)
 
@@ -162,15 +222,17 @@ for (i in 1:length(layers)) {
   p_fig <- layers[[i]] + 
     tm_layout(legend.show=FALSE)
   
-  tmap_save(p_fig,filename = paste0('figures/figSuppl/fig_',nameLayers[i],'.png'),width = 80, units='mm', dpi = 450)
+  p_fig_legend <- layers[[i]]
   
+  tmap_save(p_fig,filename = paste0('figures/figSuppl/fig_',nameLayers[i],'.png'),width = 80, height = 35.51, units='mm', dpi = 600)
+  tmap_save(p_fig_legend,filename = paste0('figures/figSuppl/fig_legend_',nameLayers[i],'.png'),width = 80, height = 35.51, units='mm', dpi = 600)
 }
 
 
 
 
 p_gini_suppl <- tmap_arrange(p_giniDisp_adm0_1990, p_giniDisp_adm1_1990,
-                             p_giniDisp_adm0_2021, p_giniDisp_adm1_2021,
+                             p_giniDisp_adm0_2023, p_giniDisp_adm1_2023,
                              p_giniDispSlope_adm0, p_giniDispSlope_adm1,
                              ncol = 2)
 
@@ -183,15 +245,15 @@ tmap_save(p_gini_suppl,filename = paste0('figures/fig1_gini_suppl_1990_2021_slop
 #### 3.2 plot percentage of slope -----
 
 
-sf_gnic <- read_sf('../subnatGNI/results/vect_gnic_1990_2021.gpkg') %>% 
-  mutate(slope = slope*32) %>% 
+sf_gnic <- read_sf('../subnatGNI/results/vect_gnic_1990_2023.gpkg') %>% 
+  mutate(slope = slope*34) %>% 
   rename(log10_1990 = '1990') %>% 
   mutate(log10_1990 = log10(log10_1990)) %>% 
   mutate(perChange = slope / log10_1990) %>% 
   filter(!iso3 == 'ATA')
 
-sf_gini <- read_sf('results/vect_gini_disp_1990_2021.gpkg') %>% 
-  mutate(slopeGiniDisp = 32*slope) %>% 
+sf_gini <- read_sf('results/vect_gini_disp_1990_2023.gpkg') %>% 
+  mutate(slopeGiniDisp = 34*slope) %>% 
   rename(giniDisp1990 = '1990') %>% 
   mutate(perChange = slopeGiniDisp / giniDisp1990) %>% 
   filter(!iso3 == 'ATA') %>% 
@@ -204,7 +266,7 @@ sf_gini <- read_sf('results/vect_gini_disp_1990_2021.gpkg') %>%
 #                        plyr::round_any( maxSlope,accuracy=0.01,f=ceiling ) ,
 #                        by= 0.02) 
 
-slopeRangeGnic <- seq(-0.20, 0.20, .025)
+slopeRangeGnic <- seq(-0.20, 0.20, .02)
 
 palGnic <-  scico(9, begin = 0.1, end = 0.9,direction = -1, palette = "vik")
 
@@ -213,17 +275,18 @@ p_gnicSlope <- f_Plot_sf_trend(sf_gnic,'perChange',slopeRangeGnic, palGnic)
 p_fig <- p_gnicSlope + 
   tm_layout(legend.show=FALSE)
 
-tmap_save(p_fig,filename = paste0('figures/figSuppl/fig_','gnicPercSlope','.png'),width = 80, units='mm', dpi = 450)
+tmap_save(p_fig,filename = paste0('figures/figSuppl/fig_','gnicPercSlope','.png'),width = 80, height = 35.51, units='mm', dpi = 600)
 
+
+p_fig <- p_gnicSlope 
+tmap_save(p_fig,filename = paste0('figures/figSuppl/fig_legend_','gnicPercSlope','.png'),width = 80, height = 35.51, units='mm', dpi = 600)
 
 
 
 minSlope <- quantile(sf_gini$perChange, .025, na.rm = T)
 maxSlope <- quantile(sf_gini$perChange, .975, na.rm = T)
 
-slopeRangeGini <- seq( plyr::round_any( minSlope,accuracy=0.01,f=floor ),
-                       plyr::round_any( maxSlope,accuracy=0.01,f=ceiling ) ,
-                       by= 0.04)
+slopeRangeGini <- slopeRangeGini <- seq(-0.12, 0.12, .01)
 
 palGini <-  scico(9, begin = 0.1, end = 0.9,direction = 1, palette = "vik")
 
@@ -234,7 +297,7 @@ p_perChange <- tmap_arrange(p_giniDispSlope, p_gnicSlope,
                             ncol = 2)
 
 
-tmap_save(p_perChange,filename = paste0('figures/fig_gini_gnic_percChange',Sys.Date(),'.pdf'),width = 180, height=120, units='mm')
+tmap_save(p_perChange,filename = paste0('figures/fig_gini_gnic_percChange.pdf'),width = 180, height=120, units='mm')
 
 
 
@@ -249,8 +312,8 @@ region_names <- cntryID %>%
 df_gini_disp <- sf_gini_disp %>% 
   st_drop_geometry() %>% 
   left_join(cntryID[,c(2,5)]) %>% 
-  rename('1990' = giniDisp1990) %>% rename('2021' = giniDisp2021)  %>% 
-  select(iso3,admID,RegionID, '1990':'2021') %>% 
+  rename('1990' = giniDisp1990) %>% rename('2023' = giniDisp2023)  %>% 
+  select(iso3,admID,RegionID, '1990':'2023') %>% 
   pivot_longer(-c(iso3,admID, RegionID), values_to = 'giniDisp', names_to = 'year') %>% 
   mutate(year = as.numeric(year)) %>% 
   left_join(region_names) %>% 
@@ -259,8 +322,8 @@ df_gini_disp <- sf_gini_disp %>%
 
 # 4.1 average for each region
 
-r_popCount <- rast('data_gis/r_pop_GHS_1990_2022_5arcmin.tif')
-r_popCount_mod <- subset(r_popCount, 1:32)
+r_popCount <- rast('data_gis/r_pop_GHS_1985_2025_5arcmin.tif')
+r_popCount_mod <- subset(r_popCount, 6:39)
 
 
 
@@ -271,15 +334,15 @@ ext_pop <- exact_extract(x= r_popCount_mod,
 df_gini_disp_wide <- sf_gini_disp %>% 
   st_drop_geometry() %>% 
   left_join(cntryID[,c(2,5)]) %>% 
-  rename('1990' = giniDisp1990) %>% rename('2021' = giniDisp2021)  %>% 
-  select(iso3,admID,RegionID, '1990':'2021') %>% 
-  set_names(c('iso3',  'admID', 'RegionID',paste0('gini',1990:2021))) %>% 
+  rename('1990' = giniDisp1990) %>% rename('2023' = giniDisp2023)  %>% 
+  select(iso3,admID,RegionID, '1990':'2023') %>% 
+  set_names(c('iso3',  'admID', 'RegionID',paste0('gini',1990:2023))) %>% 
   mutate(RegionID = as.character(RegionID)) 
 
-df_ext_pop_X_gini <- as.matrix(ext_pop) * as.matrix(df_gini_disp_wide %>% select(gini1990:gini2021)) %>% 
+df_ext_pop_X_gini <- as.matrix(ext_pop) * as.matrix(df_gini_disp_wide %>% select(gini1990:gini2023)) %>% 
   as_tibble()  
 
-names(df_ext_pop_X_gini) <- paste0('popGini',1990:2021)
+names(df_ext_pop_X_gini) <- paste0('popGini',1990:2023)
 
 regional_popXgini <- df_ext_pop_X_gini %>% 
   bind_cols(df_gini_disp_wide %>% select('iso3',  'admID', 'RegionID')) %>% 
@@ -290,7 +353,7 @@ regional_popXgini <- df_ext_pop_X_gini %>%
 
 df_ext_pop <- as.matrix(ext_pop) %>% 
   as_tibble()
-names(df_ext_pop) <- paste0('pop',1990:2021)
+names(df_ext_pop) <- paste0('pop',1990:2023)
 
 regional_pop <-  df_ext_pop%>% 
   as_tibble() %>% 
@@ -299,11 +362,11 @@ regional_pop <-  df_ext_pop%>%
   group_by(RegionID) %>% 
   summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) 
 
-regional_gini <- regional_popXgini %>% select(popGini1990:popGini2021) / 
-  regional_pop%>% select(pop1990:pop2021) %>% 
+regional_gini <- regional_popXgini %>% select(popGini1990:popGini2023) / 
+  regional_pop%>% select(pop1990:pop2023) %>% 
   as_tibble() 
 
-names(regional_gini) <- paste0(1990:2021)
+names(regional_gini) <- paste0(1990:2023)
 
 
 
@@ -412,8 +475,8 @@ region_names <- cntryID %>%
 df_gini_disp <- sf_gini_disp %>% 
   st_drop_geometry() %>% 
   left_join(cntryID[,c(2,5)]) %>% 
-  rename('1990' = giniDisp1990) %>% rename('2021' = giniDisp2021)  %>% 
-  select(iso3,admID,RegionID, '1990':'2021') %>% 
+  rename('1990' = giniDisp1990) %>% rename('2023' = giniDisp2023)  %>% 
+  select(iso3,admID,RegionID, '1990':'2023') %>% 
   pivot_longer(-c(iso3,admID, RegionID), values_to = 'giniDisp', names_to = 'year') %>% 
   mutate(year = as.numeric(year)) %>% 
   left_join(region_names) %>% 
@@ -423,7 +486,7 @@ df_gini_disp <- sf_gini_disp %>%
 ## 5.1 calculate CV for each nation and region
 
 CVadm0 <- df_gini_disp %>% 
-  filter(year == 2021) %>% 
+  filter(year == 2023) %>% 
   summarise(meanGini = mean(giniDisp, na.rm =T),
             sdGini = sd(giniDisp,  na.rm =T),
             #cvGini = cv(giniDisp),
@@ -432,7 +495,7 @@ CVadm0 <- df_gini_disp %>%
 
 
 CVreg <- df_gini_disp  %>% 
-  filter(year == 2021) %>% 
+  filter(year == 2023) %>% 
   summarise(meanGini = mean(giniDisp, na.rm =T),
             sdGini = sd(giniDisp,  na.rm =T),
             #cvGini = cv(giniDisp),
@@ -457,14 +520,14 @@ CVreg %>% select(RegName, CVgini)
 #   mutate(CVgnic = sdGnic / meanGnic)
 
 
-df_gnic_adm1 <- st_read('../subnatGNI/results/vect_gnic_1990_2021.gpkg') %>% 
+df_gnic_adm1 <- st_read('../subnatGNI/results/vect_gnic_1990_2023.gpkg') %>% 
   st_drop_geometry() %>% 
-  select(iso3, admID, X2021)  %>% 
+  select(iso3, admID, X2023)  %>% 
   as_tibble() 
 
 CVadm0_gnicAdm1 <- df_gnic_adm1 %>% 
-  summarise(meanGnic = mean(X2021, na.rm =T),
-            sdGnic = sd(X2021,  na.rm =T),
+  summarise(meanGnic = mean(X2023, na.rm =T),
+            sdGnic = sd(X2023,  na.rm =T),
             #cvGini = cv(giniDisp),
             .by = 'iso3') %>% 
   mutate(CVgnicAdm1 = sdGnic / meanGnic)
@@ -534,6 +597,7 @@ bbox_brazil <- st_bbox(sf_adm0 %>% filter(iso_a3 == "BRA"))
 bbox_centralEur <- st_bbox(sf_adm0 %>% filter(iso_a3 %in% c("DEU", "ITA", "POL", "AND") ))
 bbox_chn_india <- st_bbox(sf_adm0 %>% filter(iso_a3 %in% c("CHN", "IND")))
 
+slopeRange <- seq(-0.12, 0.12, .01)
 
 # colour palettes
 giniPal <- scico(9, begin = 0.1, end = 0.9,direction = -1, palette = "glasgow")
@@ -541,19 +605,19 @@ slopePal <-  scico::scico(9, begin = 0.1, end = 0.9,direction = 1, palette = "vi
 
 
 # 
-# p_gini_adm0_IND <- f_Plot_sfAbs_bbox(sf_gini_disp_adm0,'giniDisp2021',giniRange, bbox_india , colPal = giniPal)
-# p_gini_adm1_IND <- f_Plot_sfAbs_bbox(sf_gini_disp,'giniDisp2021',giniRange, bbox_india, colPal = giniPal )
+# p_gini_adm0_IND <- f_Plot_sfAbs_bbox(sf_gini_disp_adm0,'giniDisp2023',giniRange, bbox_india , colPal = giniPal)
+# p_gini_adm1_IND <- f_Plot_sfAbs_bbox(sf_gini_disp,'giniDisp2023',giniRange, bbox_india, colPal = giniPal )
 
 # gini
 
-p_gini_adm0_BRA <- f_Plot_sfAbs_bbox(sf_gini_disp_adm0,'giniDisp2021',giniRange, bbox_brazil, colPal = giniPal )
-p_gini_adm1_BRA <- f_Plot_sfAbs_bbox(sf_gini_disp,'giniDisp2021',giniRange, bbox_brazil, colPal = giniPal )
+p_gini_adm0_BRA <- f_Plot_sfAbs_bbox(sf_gini_disp_adm0,'giniDisp2023',giniRange, bbox_brazil, colPal = giniPal )
+p_gini_adm1_BRA <- f_Plot_sfAbs_bbox(sf_gini_disp,'giniDisp2023',giniRange, bbox_brazil, colPal = giniPal )
 
-p_gini_adm0_CE <- f_Plot_sfAbs_bbox(sf_gini_disp_adm0,'giniDisp2021',giniRange, bbox_centralEur, colPal = giniPal )
-p_gini_adm1_CE <- f_Plot_sfAbs_bbox(sf_gini_disp,'giniDisp2021',giniRange, bbox_centralEur, colPal = giniPal)
+p_gini_adm0_CE <- f_Plot_sfAbs_bbox(sf_gini_disp_adm0,'giniDisp2023',giniRange, bbox_centralEur, colPal = giniPal )
+p_gini_adm1_CE <- f_Plot_sfAbs_bbox(sf_gini_disp,'giniDisp2023',giniRange, bbox_centralEur, colPal = giniPal)
 
-p_gini_adm0_CHN_IND <- f_Plot_sfAbs_bbox(sf_gini_disp_adm0,'giniDisp2021',giniRange, bbox_chn_india, colPal = giniPal )
-p_gini_adm1_CHN_IND <- f_Plot_sfAbs_bbox(sf_gini_disp,'giniDisp2021',giniRange, bbox_chn_india, colPal = giniPal)
+p_gini_adm0_CHN_IND <- f_Plot_sfAbs_bbox(sf_gini_disp_adm0,'giniDisp2023',giniRange, bbox_chn_india, colPal = giniPal )
+p_gini_adm1_CHN_IND <- f_Plot_sfAbs_bbox(sf_gini_disp,'giniDisp2023',giniRange, bbox_chn_india, colPal = giniPal)
 
 
 # gini slope
@@ -612,7 +676,7 @@ for (i in 1:length(layers)) {
 
 # 7.1 collect data
 
-sf_adm0 <- read_sf('results/vect_adm0_gini_disp_1990_2021.gpkg')
+sf_adm0 <- read_sf('results/vect_adm0_gini_disp_1990_2023.gpkg')
 
 
 cntry_metaData_gini_upd <- read_csv("results/cntry_metaData_gini_upd.csv")
@@ -627,7 +691,7 @@ cntry_metaData_gini_upd %>%
   drop_na() %>% 
   summarise(nTotal = n())
 
-sf_giniDataOrigin <- read_sf('results/vect_gini_disp_1990_2021.gpkg') %>% 
+sf_giniDataOrigin <- read_sf('results/vect_gini_disp_1990_2023.gpkg') %>% 
   #st_drop_geometry() %>% 
   select(admID, iso3) 
 
@@ -639,9 +703,9 @@ sf_giniDataOrigin %>%
 
 # 7.2 check how many people live in subnational areas we have data for 
 
-r_popCount <- rast('data_gis/r_pop_GHS_1990_2022_5arcmin.tif')
+r_popCount <- rast('data_gis/r_pop_GHS_1985_2025_5arcmin.tif')
 
-globPop <- global(subset(r_popCount,32), fun=sum, na.rm=T)
+globPop <- global(subset(r_popCount,39), fun=sum, na.rm=T)
 
 ext_in_x_pop <- exactextractr::exact_extract(x= subset(r_popCount,32),
                                              y= sf_giniDataOrigin %>% filter(admID > 1000), 
@@ -691,7 +755,7 @@ summary(sf_dataReported_meanInterval$intervalMean_iso3)
 
 ### 7.4 plot
 
-sf_adm0_giniDataOrigin <- read_sf('results/vect_adm0_gini_disp_1990_2021.gpkg') %>% 
+sf_adm0_giniDataOrigin <- read_sf('results/vect_adm0_gini_disp_1990_2023.gpkg') %>% 
   #st_drop_geometry() %>% 
   select(admID, iso3) %>% 
   left_join(cntry_metaData_gini_upd) %>% 
@@ -699,7 +763,7 @@ sf_adm0_giniDataOrigin <- read_sf('results/vect_adm0_gini_disp_1990_2021.gpkg') 
   left_join(sf_dataReported_range %>% distinct(iso3, .keep_all = T))  %>% 
   left_join(sf_dataReported_meanInterval %>% distinct(iso3, .keep_all = T)) %>% 
   #mutate(intervalMean_iso3 = ifelse(is.nan(intervalMean_iso3)&rangeYear>0, 1, intervalMean_iso3))
-  filter(!iso3 == 'AIA')
+  filter(!iso3 == 'ATA')
 
 safe_pal <- rcartocolor::carto_pal(10, "Safe")
 
