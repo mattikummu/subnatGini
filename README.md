@@ -58,11 +58,20 @@ The code is numbered with the order it should be run. Below each code is briefly
 **functions**: the functions used in the scripts above are in this folder
 
 
-**REPRODUCTION**
 
-The input data needed to run the code is available in the repository: http://doi.org/10.5281/zenodo.14056855. Please extract the zip-file (data_in_gini.zip) under the same folder with the code. To run all the scripts, will take on average 12 hours to complete. Without the uncertainty Monte Carlo, the code running time is much less, ca one hour. 
+**RELATED CODE**
+The other two parts of the code for the above mentioned paper are given in:
+https://github.com/mattikummu/subnatGNI
+https://github.com/mattikummu/gini_gni_analyses 
+
+
+**REPRODUCTION**
+The input data needed to run the code is available in the repository: http://doi.org/10.5281/zenodo.14056855. Please extract the zip-file (input_data_gini.zip) under the same folder with the code. To run all the scripts, will take on average 12 hours to complete. Without the uncertainty Monte Carlo, the code running time is much less, ca one hour. 
+
+The input data for the Income per capita (code in https://github.com/mattikummu/subnatGNI) are also in the zenodo repository, and instructions to run the code are given in the github page. The script for the analyses (https://github.com/mattikummu/gini_gni_analyses) can be run after Gini and GNI codes are completed. 
 
 The final output data files, i.e. the expected outcome from the code, are within the same repository than the input data. 
+
 
 
 For more information, please contact Matti Kummu (matti.kummu@aalto.fi)
